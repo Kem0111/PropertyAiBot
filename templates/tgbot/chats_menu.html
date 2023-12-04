@@ -1,0 +1,19 @@
+<div id="chats-list" class="sidebar">
+    <h2>Чаты</h2>
+    <div  class="chats-menu-container">
+        {% if chats_list %}
+            {% for chat in chats_list %}
+                <div class="chat-menu-bar">
+                    <a href="{% url 'panel:chat' chat_id=chat.user.id %}">{{ chat.user.full_name }} </a>
+
+                    {% if chat.count_unread > 0 %}
+                        <span style="float: right;">{{ chat.count_unread }}</span>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>Пусто</p>
+        {% endif %}
+    </div>
+</div>
+

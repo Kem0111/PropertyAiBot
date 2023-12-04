@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}
+    Чат с пользователем ID: {{ chat_id }}
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3"> <!-- Блок sidebar занимает 1/4 страницы (12 колонок * 1/4) -->
+                {% include 'tgbot/chats_menu.html' %}
+            </div>
+
+            <div class="col-md-9">
+
+{#                <div class="container py-5">#}
+                    <h2>Пользователь ID: {{ chat_id }}</h2>
+
+                    <div id="message-container" class="chat-container">
+                        <!-- Содержимое блока с сообщениями -->
+                        {% include 'tgbot/messages.html' %}
+                    </div>
+
+                    <!-- <div class="chat-container">
+
+                        <form method="post" class="my-0">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <textarea class="form-control" id="message-text" name="message_text" rows="3" placeholder="Написать сообщение..."></textarea>
+                            </div>
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary">Отправить</button>
+                            </div>
+                        </form>
+                    </div> -->
+{#                </div>#}
+            </div>
+        </div>
+    </div>
+{% endblock %}

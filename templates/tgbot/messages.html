@@ -1,0 +1,24 @@
+{% if messages_list %}
+    {% for message in messages_list %}
+        <div class="message {% if message.sender == 'user' %}user-message{% else %}other-message{% endif %}">
+            {% if message.sender == 'user' %}
+                <a href={{ message.chat.user.url }}>{{ message.chat.user.username }} </a>
+            {% else %}
+                <span class="sender">{{ message.sender }}</span>
+            {% endif %}
+            <span class="timestamp">{{ message.created }}</span>
+            <p>{{ message.text }}</p>
+        </div>
+    {% endfor %}
+{% else %}
+    <p>Пусто</p>
+{% endif %}
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var messageContainer = document.getElementById("message-container");
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+    });
+</script>
+

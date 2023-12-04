@@ -1,0 +1,78 @@
+body {
+    background-color: #212529;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    margin: 0 auto;
+    width: 50%;
+}
+
+.message {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 15px;
+}
+
+.user-message {
+    background-color: #e6f7ff;
+    float: right;
+    clear: both;
+}
+
+.other-message {
+    background-color: #fff3cd;
+    float: left;
+    clear: both;
+}
+
+.sender {
+    font-weight: bold;
+}
+
+.timestamp {
+    font-size: 0.8em;
+    color: #888;
+}
+
+.chat-container {
+    border: 1px solid #ccc;
+    padding: 15px;
+    background: #84c7ce;
+    border-radius: 7px;
+    max-width: 100%; /* максимальная ширина, чтобы контейнер не выходил за пределы родительского элемента */
+    max-height: 60vh; /* Максимальная высота в процентах от видимой высоты окна браузера */
+    overflow: auto; /* Полоса прокрутки при необходимости */
+}
+
+.chat-container:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.image-message .sender,
+.image-message .timestamp {
+  display: block;
+  text-align: left;  /* Сместить текст вправо */
+}
+
+.chat-menu-bar{
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    background-color: #777575;
+    /*color: #000000;*/
+}
+
+.chat-menu-bar a {
+    color: #000000; /* Задайте желаемый цвет для ссылки, например, красный (#ff0000) */
+    /* Дополнительные стили для ссылки, если необходимо */
+}
+
+.chat-menu-bar a:hover {
+    color: #00ff00; /* Цвет текста ссылки при наведении (здесь, например, зеленый) */
+    /* Дополнительные стили для ссылки при наведении, если необходимо */
+}
