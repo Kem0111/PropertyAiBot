@@ -177,3 +177,5 @@ alembic/versions/*
 
 locales/*
 !locales/.gitkeep
+
+PropertyAiBot.pem

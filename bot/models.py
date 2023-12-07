@@ -24,7 +24,6 @@ class TgUser(CreatedModel):
         max_length=255,
         null=True,
         blank=True,
-        default=None
     )
     full_name = models.CharField(
         max_length=255,
@@ -41,7 +40,9 @@ class TgUser(CreatedModel):
     )
     email = models.EmailField(
         unique=True,
-        verbose_name='Электронная почта'
+        verbose_name='Электронная почта',
+        blank=True,
+        null=True
     )
     url = models.CharField(verbose_name='Ссылка на пользователя', max_length=255, unique=True)
     has_previous_inquiries = models.BooleanField(
