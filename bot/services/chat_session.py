@@ -1,5 +1,7 @@
 import asyncio
 import json
+
+from bot.utils.db import search_properties
 from .thread_manager import ThreadManager
 from .assistant_manager import AssistantManager
 from .db_manager import db_manager
@@ -10,7 +12,15 @@ class ChatSession:
     TOOL_TO_DB_FUNC = {
         "determine_user_role": db_manager.add_user_role,
         "collect_user_info": db_manager.update_user_info,
-        "provide_property_ids": db_manager.add_user_request_pr
+        "provide_property_ids": db_manager.add_user_request_pr,
+        "search_and_provide_properties": db_manager.get_properties
+    }
+
+    TOOL_CALL_OUTPUT = {
+        "determine_user_role": 'result taken into account',
+        "collect_user_info": 'result taken into account',
+        "provide_property_ids": 'result taken into account',
+        "search_and_provide_properties": {}
     }
 
     def __init__(self,
@@ -55,25 +65,33 @@ class ChatSession:
         while True:
             runs = await self.thread_manager.list_runs(self.thread_id)
             latest_run = runs.data[0]
+            print(latest_run.status)
             if latest_run.status in ["completed", "failed"]:
                 break
 
             if latest_run.status == "requires_action":
-                tool_call = latest_run.required_action.submit_tool_outputs.tool_calls[0]
+ 
                 tool_outputs = []
 
-                method = self.TOOL_TO_DB_FUNC.get(tool_call.function.name)
+                for tool_call in latest_run.required_action.submit_tool_outputs.tool_calls:
+                    method = self.TOOL_TO_DB_FUNC.get(tool_call.function.name)
+                    if method:
+                        print(tool_call.function.arguments)
+                        try:
+                            results = await method(
+                                self.user_id, **json.loads(tool_call.function.arguments)
+                            )
+                            output = self.TOOL_CALL_OUTPUT[tool_call.function.name].format(results)
+                        except json.JSONDecodeError as e:
+                            output = f"Ошибка при разборе JSON: {e}, Исходная строка JSON: {tool_call.function.arguments}"
 
-                await method(
-                    self.user_id, **json.loads(tool_call.function.arguments)
-                )
+                        tool_outputs.append(
+                                {
+                                    "tool_call_id": tool_call.id,
+                                    "output": output
+                                },
+                            )
 
-                tool_outputs.append(
-                    {
-                          "tool_call_id": tool_call.id,
-                          "output": 'result taken into account'
-                    },
-                )
                 if tool_outputs:
                     await self.thread_manager.submit_tool_outputs(
                         thread_id=self.thread_id,

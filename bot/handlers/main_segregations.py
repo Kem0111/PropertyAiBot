@@ -4,11 +4,15 @@ from aiogram.fsm.context import FSMContext
 from bot.models import UserThread
 from django.core.exceptions import ObjectDoesNotExist
 from bot.config import thread_manager, assistant_manager, bot
-from package.settings import ASSISTENT_ID
+from bot.services.db_manager import db_manager
+
 from bot.services.chat_session import ChatSession
+
+assistan_id = None
 
 
 async def on_start(message: Union[types.Message, types.CallbackQuery]):
+    global assistan_id
     typing_msg = await message.answer('⏳ Typing...')
 
     try:
@@ -23,9 +27,12 @@ async def on_start(message: Union[types.Message, types.CallbackQuery]):
             threade=threade_id
         )
 
+    if not assistan_id:
+        assistan_id = await db_manager.get_assistant_id()
+
     chat_manager = ChatSession(
         thread_manager, assistant_manager,
-        message.from_user.id, ASSISTENT_ID, threade_id
+        message.from_user.id, assistan_id, threade_id
     )
 
     text = await chat_manager.chat_loop(message.text)

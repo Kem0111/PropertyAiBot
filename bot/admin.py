@@ -6,28 +6,8 @@ from django.contrib.auth.models import User as DefaultUser
 from django.contrib.auth.admin import UserAdmin as DefaultUserAdmin
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from asgiref.sync import async_to_sync
-import csv
 
-from package.utils.update_file import update_property_file
-
-from .models import TgUser, Buyer, Owner, Chat, BuyerInquiry, Property
-
-
-def update_csv_file():
-    properties = Property.objects.filter(is_passed=False).all()
-    with open('properties.csv', 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow([
-            'ID', 'Название', 'Детали', 'Цена', 'Валюта', 'Локация'
-        ])
-        for prop in properties:
-            writer.writerow(
-                [
-                    prop.id, prop.title, prop.details, prop.price,
-                    prop.currency, prop.location
-                ]
-            )
+from .models import TgUser, Buyer, Owner, Chat, BuyerInquiry, Property, FileId
 
 
 # Register your models here.
@@ -65,18 +45,9 @@ class BuyerAdmin(admin.ModelAdmin):
 
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
-    list_display = ('id', 'type', 'location', 'formated_price')
-    search_fields = ('id', 'type', 'location')
-
-    def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
-        update_csv_file()  # Обновление CSV файла после сохранения модели
-        async_to_sync(update_property_file)()
-
-    def delete_model(self, request, obj):
-        super().delete_model(request, obj)
-        update_csv_file()
-        async_to_sync(update_property_file)()
+    list_display = ('id', 'realty_type', 'city', 'formated_price')
+    search_fields = ('id', 'city')
+    list_filter = ('realty_type', 'advert_type')
 
 
 @admin.register(Chat)
@@ -107,3 +78,8 @@ class ChatAdmin(admin.ModelAdmin):
 class TgUserAdmin(admin.ModelAdmin):
     list_display = ('id', 'username', 'full_name', 'email')
     readonly_fields = ('url', 'username', 'email', 'full_name', 'id', 'phone_number')
+
+
+@admin.register(FileId)
+class FileIdAdmin(admin.ModelAdmin):
+    list_display = ('id', 'key', 'value')

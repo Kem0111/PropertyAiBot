@@ -1,7 +1,8 @@
 from bot.config import assistant_manager, openai_client
+from bot.models import FileId
 from bot.services.db_manager import db_manager
 from openai import NotFoundError, BadRequestError
-import os
+from package.settings import ASSISTENT_NAME, FILE_INSTRUCTION_PATH, FILE_INSTRUCTION_ID
 from dotenv import load_dotenv
 
 
@@ -32,13 +33,13 @@ class AssistantSettings:
             "type": "function",
             "function": {
                 "name": "collect_user_info",
-                "description": "Collect user's information",
+                "description": "This function is designed to collect user information. It takes user input such as full name, phone number, and email address, and returns them in a structured format. During processing, the function removes all extraneous whitespace characters, including new lines, and validates the data against specific formats (e.g., phone number and email formats). This ensures the accuracy and consistency of the returned data and prevents potential errors when saving the data in a database later",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "full_name": {
                             "type": "string",
-                            "description": "User's name, e.g. Михаил"
+                            "description": "A string containing the user's full name. The function automatically trims leading and trailing spaces, as well as any other whitespace characters, including new lines e.g. Михаил"
                         },
                         "phone_number": {
                             "type": "string",
@@ -71,19 +72,62 @@ class AssistantSettings:
                     "required": ["property_ids"]
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_and_provide_properties",
+                "description": "Search properties based on user preferences",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "price": {
+                            "type": "number",
+                            "description": "price for the property search"
+                        },
+                        "room_count": {
+                            "type": "number",
+                            "description": "room count for the property search"
+                        },
+                        "area": {
+                            "type": "number",
+                            "description": "area of the property in square meters"
+                        },
+                        "district": {
+                            "type": "string",
+                            "description": "Preferred district for the property e.g., Печерский"
+                        },
+                        "city": {
+                            "type": "string",
+                            "description": "Preferred city for the property, e.g., Киев, Киево-Святошинский"
+                        },
+                        "realty_type": {
+                            "type": "string",
+                            "description": "Type of the realty, only one of this items: квартира, частный дом, офисное помещение, коммерческое помещение, участок под жилую застройку, земля сельскохозяйственного назначения, земля коммерческого назначения, коммерческое помещение"
+                        },
+                        "street": {
+                            "type": "string",
+                            "description": "Preferred street or location, e.g., Драгомирова"
+                        },
+                        "advert_type": {
+                            "type": "string",
+                            "description": "Type of advertisement, only one of this items:, продажа, долгосрочная аренда"
+                        },
+                        "page_number": {
+                            "type": "number",
+                            "description": "Specifies the page number of the search results to be displayed. Used for pagination to navigate through different sets of results"
+                        }
+                    },
+                    "required": ["advert_type", "realty_type", "city", "page_number"]
+                }
+            }
         }
+
     ]
 
-    ASSISTANT_NAME = os.getenv("ASSISTANT_NAME")
-    assistant_id = os.getenv("ASSISTENT_ID", None)
     MODEL = "gpt-4-1106-preview"
-    FILE_PROPERTY_KEY = "FILE_PROPERTY_ID"
-    FILE_DIALOGUE_KEY = "FILE_DIALOGUE_ID"
-
-    def get_instructions(self):
-        with open('instructions.txt') as file:
-            assistant_instructions = file.read()
-        return assistant_instructions
+    DESCRIPTION = "Property Bot"
+    INSTRUCTION = "Все инструкции в переданном файле детально его изучи"
 
     async def delete_file(self, file_id):
         try:
@@ -106,53 +150,29 @@ class AssistantSettings:
         )
         return open_ai_file.id
 
-    async def create_dialogue_file(self):
+    async def create_instruct_file(self):
         return await self._file_proccess(
-            self.FILE_DIALOGUE_KEY, "dialogue.txt"
-        )
-
-    async def create_properties_file(self):
-        return await self._file_proccess(
-            self.FILE_PROPERTY_KEY, "properties.json"
+            FILE_INSTRUCTION_ID, FILE_INSTRUCTION_PATH
         )
 
     async def create_assistant(self):
 
-        if self.assistant_id:
-            await assistant_manager.delete_assistant(self.assistant_id)
+        assistant_id = await db_manager.get_assistant_id()
 
-        open_ai_property_file_id = await self.create_properties_file()
-        open_ai_dialogue_file_id = await self.create_dialogue_file()
+        if assistant_id:
+            await assistant_manager.delete_assistant(assistant_id)
+
+        open_ai_instruct_file_id = await self.create_instruct_file()
 
         assistant = await assistant_manager.create_assistant(
-            name=self.ASSISTANT_NAME,
-            instructions=self.get_instructions(),
+            name=ASSISTENT_NAME,
+            description=self.DESCRIPTION,
+            instructions=self.INSTRUCTION,
             tools=self.TOOLS,
             model=self.MODEL,
-            file_ids=[open_ai_property_file_id, open_ai_dialogue_file_id]
+            file_ids=[open_ai_instruct_file_id]
         )
-        self.write_assistant_id_to_env(assistant.id)
-
-    def write_assistant_id_to_env(self, assistant_id):
-        # Считывание текущего содержимого .env файла
-        with open('.env', 'r') as file:
-            lines = file.readlines()
-
-        # Проверка и обновление файла
-        assistant_id_found = False
-        for i in range(len(lines)):
-            if lines[i].startswith('ASSISTENT_ID='):
-                lines[i] = f'ASSISTENT_ID={assistant_id}\n'
-                assistant_id_found = True
-                break
-
-        # Добавление ASSISTENT_ID, если он не найден
-        if not assistant_id_found:
-            lines.append(f'ASSISTENT_ID={assistant_id}\n')
-
-        # Перезапись файла .env с обновленными данными
-        with open('.env', 'w') as file:
-            file.writelines(lines)
+        await db_manager.update_assistant_id(assistant.id)
 
 
 assistant = AssistantSettings()

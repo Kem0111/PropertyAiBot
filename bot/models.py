@@ -98,26 +98,132 @@ class Buyer(models.Model):
 
 
 class Property(CreatedModel):
-    type = models.CharField(verbose_name='Тип обьекта')
-    details = models.TextField(verbose_name='Описание обьекта')
-    location = models.CharField(max_length=100, verbose_name='Местоположение')
-    price = models.DecimalField(max_digits=10, decimal_places=2,
-                                verbose_name='Цена')
-    currency = models.CharField(max_length=9,
-                                verbose_name='Валюта')
-    is_passed = models.BooleanField(default=False, verbose_name='Сдан?')
 
-    def __str__(self) -> str:
-        return f"{self.type} на {self.location}"
+    REALTY_TYPE_CHOICES = (
+        ('квартира', 'квартира'),
+        ("земля коммерческого назначения", "земля коммерческого назначения"),
+        ("земля сельскохозяйственного назначения", "земля сельскохозяйственного назначения"),
+        ("участок под жилую застройку", "участок под жилую застройку"),
+        ("частный дом", "частный дом"),
+        ("офисное помещение", "офисное помещение"),
+        ("коммерческое помещение", "коммерческое помещение"),
+    )
+
+    ADVERT_TYPE_CHOICES = (
+        ('продажа', 'продажа'),
+        ('долгосрочная аренда', 'долгосрочная аренда'),
+    )
+
+    PRICE_TYPE_CHOICES = (
+        ('за объект', 'за объект'),
+        ('за участок', 'за участок'),
+        ('за кв.м.', 'за кв.м.'),
+    )
+
+    WALL_TYPE_CHOICES = (
+        ('кирпич', 'Кирпич'),
+    )
+
+    HEATING_TYPE_CHOICES = (
+        ('централизованное', 'централизованное'),
+        ('индивидуальное', 'индивидуальное'),
+    )
+    STREET_TYPE_CHOICES = (
+        ("улица", "улица"),
+        ("шоссе", "шоссе"),
+        ("бульвар", "бульвар"),
+        ("площадь", "площадь"),
+        ("переулок", "переулок"),
+        ("проспект", "проспект")
+    )
+    FLAT_STATE_CHOICES = (
+        ("без отделочных работ", "без отделочных работ"),
+        ("черновые работы / строительная отделка", "черновые работы / строительная отделка"),
+        ("аварийное", "аварийное"),
+        ("евроремонт", "евроремонт"),
+        ("дизайнерский ремонт", "дизайнерский ремонт"),
+        ("косметический ремонт", "косметический ремонт"),
+        ("удовлетворительное", "удовлетворительное")
+    )
+    realty_type = models.CharField(max_length=50, choices=REALTY_TYPE_CHOICES, verbose_name='Тип недвижимости')
+    advert_type = models.CharField(max_length=50, choices=ADVERT_TYPE_CHOICES, verbose_name='Тип объявления')
+    state = models.CharField(max_length=100, verbose_name='Область')
+    city = models.CharField(max_length=100, verbose_name='Город')
+    district = models.CharField(max_length=100, verbose_name='Район', null=True)
+    street = models.CharField(max_length=100, verbose_name='Улица', null=True)
+    street_type = models.CharField(max_length=50, choices=STREET_TYPE_CHOICES, verbose_name='Тип улицы')
+    building_number = models.CharField(max_length=10, verbose_name='Номер здания', null=True)
+    description = models.TextField(verbose_name='Описание', null=True)
+    # Characteristics
+    rooms_count = models.IntegerField(verbose_name='Количество комнат', null=True)
+    total_area = models.DecimalField(max_digits=6, decimal_places=2, verbose_name='Общая площадь', null=True)
+    living_area = models.DecimalField(max_digits=6, decimal_places=2, verbose_name='Жилая площадь', null=True)
+    kitchen_area = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Площадь кухни', null=True)
+    floor = models.IntegerField(verbose_name='Этаж', null=True)
+    floors = models.IntegerField(verbose_name='Количество этажей', null=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
+    price_type = models.CharField(max_length=50, choices=PRICE_TYPE_CHOICES, verbose_name='Тип цены', null=True)
+    currency = models.CharField(max_length=10, verbose_name='Валюта')
+    build_year = models.CharField(max_length=50, verbose_name='Год постройки', null=True)
+    flat_state = models.CharField(max_length=100, choices=FLAT_STATE_CHOICES ,verbose_name='Состояние квартиры', null=True)
+    wall_type = models.CharField(max_length=50, choices=WALL_TYPE_CHOICES, verbose_name='Тип стен', null=True)
+    heating = models.CharField(max_length=50, choices=HEATING_TYPE_CHOICES, verbose_name='Тип отопления', null=True)
+
+    def __str__(self):
+        return f"{self.realty_type} {self.pk}"
 
     class Meta:
         verbose_name = 'Недвижимость'
         verbose_name_plural = 'Недвижимость'
-        ordering = ['created']
+        ordering = ['id']
 
     def formated_price(self):
         return f"{self.price} {self.currency}"
     formated_price.short_description = 'Цена'
+
+    def formatted_price(self):
+        return f"{self.price} {self.currency}"
+
+    def full_address(self):
+        address_parts = [self.city, self.district, self.street_type, self.street, self.building_number]
+        # Удаляем пустые части адреса
+        address_parts = [part for part in address_parts if part]
+        return ", ".join(address_parts)
+
+    def get_detail_if_true(self, title, field):
+        return f'{title}: {field}' if field else ''
+
+    def get_main_details(self):
+        rooms_count = self.get_detail_if_true('Количество комнат', self.rooms_count)
+        living_area = self.get_detail_if_true('Жилая площадь', self.living_area)
+        kitchen_area = self.get_detail_if_true('Площадь кухни', self.kitchen_area)
+        floor = self.get_detail_if_true('Этаж', self.floor)
+        floors = self.get_detail_if_true('Количество этажей', self.floors)
+        flat_state = self.get_detail_if_true('Состояние квартиры', self.flat_state)
+        wall_type = self.get_detail_if_true('Тип стен', self.wall_type)
+        heating = self.get_detail_if_true('Тип отопления', self.heating)
+        return f"{rooms_count}\n{living_area}\n{kitchen_area}\n{floor}\n{floors}\n{flat_state}\n{wall_type}\n{heating}\n"
+
+    def detailed_description(self):
+        return (
+            f"""ID: {self.pk}\n\n{self.realty_type},\n
+            {self.advert_type} в {self.full_address()}.\n
+            Цена: {self.formatted_price()}.\n
+            {self.get_main_details()}\n
+            Описание: {self.description}"""
+        )
+
+
+class PropertyPhoto(models.Model):
+    property = models.ForeignKey(Property, related_name='photos', on_delete=models.CASCADE, verbose_name='Недвижимость')
+    photo_url = models.URLField(verbose_name='URL фотографии')
+
+    def __str__(self):
+        return f"Фотография для {self.property}"
+
+    class Meta:
+        verbose_name = 'Фотография недвижимости'
+        verbose_name_plural = 'Фотографии недвижимости'
 
 
 class BuyerInquiry(CreatedModel):

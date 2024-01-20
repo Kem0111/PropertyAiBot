@@ -10,10 +10,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from openai import AsyncOpenAI
 from package.settings import GPT_TOKEN
 from bot.middleware.openai_assistant import ChatActionMiddleware
-from dotenv import load_dotenv
-
-
-load_dotenv()
 
 
 logging.basicConfig(level=logging.INFO)
@@ -38,3 +34,4 @@ openai_client = AsyncOpenAI(api_key=GPT_TOKEN)
 assistant_manager = AssistantManager(openai_client)
 thread_manager = ThreadManager(openai_client)
 scheduler = AsyncIOScheduler()
+assistant_id = None

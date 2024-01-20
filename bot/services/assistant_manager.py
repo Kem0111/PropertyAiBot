@@ -17,9 +17,10 @@ class AssistantManager:
     async def retrieve_assistant(self, assistant_id: str):
         return await self.client.beta.assistants.retrieve(assistant_id)
 
-    async def create_assistant(self, name: str, instructions: str, tools: list, model: str, file_ids: List):
+    async def create_assistant(self, name: str, description: str, instructions: str, tools: list, model: str, file_ids: List):
         return await self.client.beta.assistants.create(
             name=name,
+            description=description,
             instructions=instructions,
             tools=tools,
             model=model,
