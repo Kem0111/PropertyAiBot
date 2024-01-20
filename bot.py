@@ -13,7 +13,7 @@ async def main():
     from bot.config import dp, bot
     from bot.handlers import main_segregations
     main_segregations.register_handlers(dp)
-
+    
     try:
         await dp.start_polling(
             bot,

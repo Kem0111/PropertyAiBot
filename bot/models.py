@@ -25,6 +25,27 @@ class TgUser(CreatedModel):
         null=True,
         blank=True,
     )
+    url = models.CharField(verbose_name='Ссылка на пользователя', max_length=255, unique=True)
+    is_manager = models.BooleanField(default=False, verbose_name='Менеджер')
+
+    def __str__(self):
+        return f"{self.username}"
+
+    class Meta:
+        verbose_name = 'Телеграм менеджер'
+        verbose_name_plural = 'Телеграм менеджер'
+
+
+class UserThread(models.Model):
+    user = models.OneToOneField(
+        TgUser,
+        on_delete=models.CASCADE,
+        verbose_name='Пользователь'
+    )
+    threade = models.CharField(max_length=150, verbose_name='Идентификатор треда')
+
+
+class Client(models.Model):
     full_name = models.CharField(
         max_length=255,
         blank=True,
@@ -44,50 +65,6 @@ class TgUser(CreatedModel):
         blank=True,
         null=True
     )
-    url = models.CharField(verbose_name='Ссылка на пользователя', max_length=255, unique=True)
-    has_previous_inquiries = models.BooleanField(
-        default=False,
-        verbose_name='Обращался или нет',
-        blank=True,
-        null=True
-    )
-
-    def __str__(self):
-        return f"{self.username}"
-
-    class Meta:
-        verbose_name = 'Телеграм пользователя'
-        verbose_name_plural = 'Телеграм пользователи'
-
-
-class UserThread(models.Model):
-    user = models.OneToOneField(
-        TgUser,
-        on_delete=models.CASCADE,
-        verbose_name='Пользователь'
-    )
-    threade = models.CharField(max_length=150, verbose_name='Идентификатор треда')
-
-
-class Owner(models.Model):
-    customer = models.OneToOneField(
-        TgUser,
-        on_delete=models.CASCADE,
-        verbose_name='Пользователь'
-    )
-
-    def __str__(self):
-        return self.customer.full_name if self.customer.full_name \
-            else f"Пользователь {self.customer.id}"
-
-    class Meta:
-        verbose_name = 'Собственника'
-        verbose_name_plural = 'Собственники'
-
-
-class Buyer(models.Model):
-    customer = models.OneToOneField(
-        TgUser, on_delete=models.CASCADE, verbose_name='Пользователь')
 
     def __str__(self):
         return self.customer.full_name or self.customer.username
@@ -121,12 +98,20 @@ class Property(CreatedModel):
 
 
 class BuyerInquiry(CreatedModel):
-    customer = models.ForeignKey(Buyer,
+    user = models.OneToOneField(
+        TgUser,
+        verbose_name='Агент',
+        related_name='buyer_inquiry',
+        on_delete=models.CASCADE
+    )
+    customer = models.ForeignKey(Client,
                                  on_delete=models.CASCADE,
                                  related_name='inquiries')
     property = models.ForeignKey(Property,
                                  on_delete=models.CASCADE,
-                                 verbose_name='Недвижимость')
+                                 verbose_name='Недвижимость',
+                                 null=True,
+                                 blank=True)
 
     def __str__(self):
         return f"Запрос {self.customer} на {self.property}"
@@ -134,6 +119,28 @@ class BuyerInquiry(CreatedModel):
     class Meta:
         verbose_name = 'Запрос клиента'
         verbose_name_plural = 'Запросы клиентов'
+
+
+class Notification(CreatedModel):
+    buyer_inquiry = models.ForeignKey(
+        BuyerInquiry,
+        on_delete=models.CASCADE,
+        verbose_name='Запрос клиента'
+    )
+    text = models.TextField(
+        max_length=3000, verbose_name="Текст", help_text="Укажите текст"
+    )
+    mail_date = models.DateTimeField(
+        verbose_name="Дата рассылки", help_text="Укажите дату рассылки"
+    )
+    is_sended = models.BooleanField(default=False, verbose_name="Отправлено")
+
+    def __str__(self) -> str:
+        return self.text[:50]
+    
+    class Meta:
+        verbose_name = 'Напоминание'
+        verbose_name_plural = 'Напоминания'
 
 
 class Chat(models.Model):
