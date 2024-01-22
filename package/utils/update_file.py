@@ -1,4 +1,4 @@
-from package.settings import ASSISTENT_ID
+
 from bot.config import assistant_manager
 from bot.models import FileId
 

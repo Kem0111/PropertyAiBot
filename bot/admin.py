@@ -10,7 +10,7 @@ from asgiref.sync import async_to_sync
 
 from package.utils.update_file import update_property_file
 
-from .models import Client, Notification, TgUser, Chat, BuyerInquiry, Property
+from .models import Client, FileId, Notification, TgUser, Chat, BuyerInquiry, Property
 
 
 # Register your models here.
@@ -41,10 +41,17 @@ class BuyerAdmin(admin.ModelAdmin):
     inlines = (BuyerInquiryInline,)
 
 
+@admin.register(BuyerInquiry)
+class BuyerInquiryAdmin(admin.ModelAdmin):
+    list_display = ('customer', 'property')
+
+
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
-    list_display = ('id', 'type', 'location', 'formated_price')
-    search_fields = ('id', 'type', 'location')
+    list_display = ('id', 'realty_type', 'formated_price')
+    search_fields = ('id', 'realty_type', 'city')
+
+    filter_list = ('realty_type',)
 
 
 @admin.register(Notification)
@@ -68,7 +75,7 @@ class ChatAdmin(admin.ModelAdmin):
 
     @staticmethod
     def full_name(chat):
-        return chat.user.full_name
+        return chat.user.pk
 
     @staticmethod
     def link(chat):
@@ -80,3 +87,8 @@ class ChatAdmin(admin.ModelAdmin):
 class TgUserAdmin(admin.ModelAdmin):
     list_display = ('id', 'username',)
     readonly_fields = ('url', 'username')
+
+
+@admin.register(FileId)
+class FileIdAdmin(admin.ModelAdmin):
+    list_display = ('id', 'key', 'value')

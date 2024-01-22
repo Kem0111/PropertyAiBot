@@ -1,41 +1,50 @@
-from bot.models import FileId, TgUser, Buyer, Owner, BuyerInquiry
-from django.db.models import Model
-from django.db.utils import IntegrityError
+from bot.models import Client, FileId, TgUser, BuyerInquiry, Notification
+from package.settings import ASSISTENT_ID_KEY
+from asgiref.sync import sync_to_async
 
 
 class DbManager:
 
-    ROLE = {
-        "buyer": Buyer,
-        "owner": Owner
-    }
-
     async def update_user_info(self, user_id, **kwargs):
         await TgUser.objects.aupdate_or_create(id=user_id, defaults=kwargs)
 
-    async def add_user_role(self, user_id, role="owner"):
-        model: Model = self.ROLE.get(role)
-
-        await model.objects.aget_or_create(
-            customer_id=user_id
+    async def client_proccess(self, user_id, **kwargs):
+        property_id = kwargs.pop("property_id")
+        full_name = kwargs.get('full_name').strip()
+        phone_number = kwargs.get('phone_number').strip()
+        email = kwargs.get('email').strip()
+        client, _ = await Client.objects.aget_or_create(
+            full_name=full_name,
+            phone_number=phone_number or None,
+            email=email or None
         )
 
-    async def add_user_request_pr(self, user_id, property_ids=[]):
-        customer, _ = await Buyer.objects.aget_or_create(customer_id=user_id)
-        print(property_ids)
+        await BuyerInquiry.objects.acreate(
+            user_id=user_id,
+            property_id=property_id,
+            customer_id=client.pk
+        )
 
-        for property_id in property_ids:
-            try:
-                await BuyerInquiry.objects.aget_or_create(
-                    customer_id=customer.pk,
-                    property_id=property_id
-                )
-            except IntegrityError:
-                pass
+    async def add_notification(self, user_id,  **kwargs):
+        await Notification.objects.acreate(
+            user_id=user_id,
+            **kwargs
+        )
+
+    async def get_assistant_id(self):
+        assistant = await FileId.objects.filter(key=ASSISTENT_ID_KEY).afirst()
+        return assistant.value if assistant else None
+
+    async def update_assistant_id(self, assistant_id):
+        await FileId.objects.aupdate_or_create(key=ASSISTENT_ID_KEY, defaults={"value": assistant_id})
 
     async def get_file_id(self, key):
         openai_file = await FileId.objects.filter(key=key).afirst()
         return openai_file
+
+    async def get_buyer_inquiry(self, order_id):
+        order = await BuyerInquiry.objects.filter(id=order_id).afirst()
+        return await sync_to_async(order.stringify)()
 
     async def save_file_id(self, file_id: str, key: str) -> None:
 

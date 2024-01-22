@@ -17,13 +17,14 @@ class AssistantManager:
     async def retrieve_assistant(self, assistant_id: str):
         return await self.client.beta.assistants.retrieve(assistant_id)
 
-    async def create_assistant(self, name: str, instructions: str, tools: list, model: str, file_ids: List):
+    async def create_assistant(self, name: str, description: str, instructions: str, tools: list, model: str):
         return await self.client.beta.assistants.create(
             name=name,
+            description=description,
             instructions=instructions,
             tools=tools,
             model=model,
-            file_ids=file_ids
+            # file_ids=file_ids
         )
 
     async def update_assistant(self, assistant_id: str, name: Optional[str] = None, description: Optional[str] = None,
@@ -81,5 +82,7 @@ class AssistantManager:
             str: The ID of the assistant if found, otherwise None.
         """
         assistants = await self.list_assistants()
+        print(assistants)
+        await assistants.clear()
         return assistants.get(name)
 

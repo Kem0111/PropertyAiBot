@@ -1,89 +1,66 @@
 from bot.config import assistant_manager, openai_client
 from bot.services.db_manager import db_manager
 from openai import NotFoundError, BadRequestError
-import os
 from dotenv import load_dotenv
-
+from pydantic import BaseModel, Field
+from datetime import datetime as dt
+from package.settings import (
+    ASSISTENT_NAME, FILE_INSTRUCTION_PATH, FILE_INSTRUCTION_ID
+)
 
 load_dotenv()
 
 
+class Notification(BaseModel):
+    text: str = Field(..., description='Notification text')
+    mail_date: dt = Field(..., description="Notification time in ISO 8601 format, e.g., '2024-03-20T17:35:11.382192'")
+    buyer_inquiry_id: int = Field(..., description='ID buyer inquiry e.g. 10 ptional parameter, do not send with the response if no ID is received')
+
+
+class UserInfo(BaseModel):
+    full_name: str = Field(..., description="User's name, e.g. Михаил")
+    phone_number: str = Field(..., description="User's phone number, e.g. 89857233621")
+    email: str = Field(..., description="User's email, e.g. test@tes.com")
+    property_id: int = Field(..., description="property ID, e.g. 1523 Optional parameter, do not send with the response if no ID is received")
+
+
 class AssistantSettings:
     TOOLS = [
-        {"type": "retrieval"},
+        {"type": "code_interpreter"},
         {
             "type": "function",
             "function": {
-                "name": "determine_user_role",
-                "description": "Determine the user's role as either a buyer or an owner.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "role": {
-                            "type": "string",
-                            "description": "User's response to the question about their role, e.g. buyer"
-                        }
-                    },
-                    "required": ["role"]
-                }
+                "name": "collect_user_info_for_order",
+                "description": "Collect user's information and property id, If some data is missing, then do not send any values for those parameters.",
+                "parameters": UserInfo.model_json_schema()
             }
         },
         {
             "type": "function",
             "function": {
-                "name": "collect_user_info",
-                "description": "Collect user's information",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "full_name": {
-                            "type": "string",
-                            "description": "User's name, e.g. Михаил"
-                        },
-                        "phone_number": {
-                            "type": "string",
-                            "description": "User's phone number, e.g. 89857233621"
-                        },
-                        "email": {
-                            "type": "string",
-                            "description": "User's email, e.g. test@tes.com"
-                        }
-                    },
+                "name": "add_notification",
+                "description": "A simple reminder for a specific client property request",
+                "parameters": Notification.model_json_schema(),
+                    "required": ["text", "mail_date"]
                 }
-            }
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "provide_property_ids",
-                "description": "Provide a list of property IDs liked by user.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "property_ids": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
-                            },
-                            "description": "List of property IDs liked by user."
-                        }
-                    },
-                    "required": ["property_ids"]
-                }
-            }
         }
     ]
 
-    ASSISTANT_NAME = os.getenv("ASSISTANT_NAME")
-    assistant_id = os.getenv("ASSISTENT_ID", None)
     MODEL = "gpt-4-1106-preview"
-    FILE_PROPERTY_KEY = "FILE_PROPERTY_ID"
-    FILE_DIALOGUE_KEY = "FILE_DIALOGUE_ID"
-
-    def get_instructions(self):
-        with open('instructions.txt') as file:
-            assistant_instructions = file.read()
-        return assistant_instructions
+    DESCRIPTION = "Property Bot"
+    INSTRUCTION = """
+Ты являешься специализированным ботом помощником агентов по недвижимости,
+основная задача которого – помочь агентам в формировании и добавлении
+пользователей и напоминаний.
+Используй функцию collect_user_info_for_order для того что бы зафиксировать
+клиента по опроделенному обьекту недвижимости, используй add_notification
+что бы помочь агенту поставить уведомления под определенные даты,
+соотвественно если тебе говорят напомнить через полгода что-то, то в поле
+mail_date ты возвращаешь точную дату для сохранения в базе данных по модели
+поля DateTimeField, всегда узнавай точную сегодняшнюю дату через код и от него
+расчитай нужную дату, ожидается получение времени
+в формате ISO 8601, если время и дата не задано по дефолту ставь через неделю
+    """
 
     async def delete_file(self, file_id):
         try:
@@ -106,53 +83,29 @@ class AssistantSettings:
         )
         return open_ai_file.id
 
-    async def create_dialogue_file(self):
+    async def create_instruct_file(self):
         return await self._file_proccess(
-            self.FILE_DIALOGUE_KEY, "dialogue.txt"
-        )
-
-    async def create_properties_file(self):
-        return await self._file_proccess(
-            self.FILE_PROPERTY_KEY, "properties.json"
+            FILE_INSTRUCTION_ID, FILE_INSTRUCTION_PATH
         )
 
     async def create_assistant(self):
 
-        if self.assistant_id:
-            await assistant_manager.delete_assistant(self.assistant_id)
+        assistant_id = await db_manager.get_assistant_id()
 
-        open_ai_property_file_id = await self.create_properties_file()
-        open_ai_dialogue_file_id = await self.create_dialogue_file()
+        if assistant_id:
+            await assistant_manager.delete_assistant(assistant_id)
+
+        # open_ai_instruct_file_id = await self.create_instruct_file()
 
         assistant = await assistant_manager.create_assistant(
-            name=self.ASSISTANT_NAME,
-            instructions=self.get_instructions(),
+            name=ASSISTENT_NAME,
+            description=self.DESCRIPTION,
+            instructions=self.INSTRUCTION,
             tools=self.TOOLS,
             model=self.MODEL,
-            file_ids=[open_ai_property_file_id, open_ai_dialogue_file_id]
+            # file_ids=[open_ai_instruct_file_id]
         )
-        self.write_assistant_id_to_env(assistant.id)
-
-    def write_assistant_id_to_env(self, assistant_id):
-        # Считывание текущего содержимого .env файла
-        with open('.env', 'r') as file:
-            lines = file.readlines()
-
-        # Проверка и обновление файла
-        assistant_id_found = False
-        for i in range(len(lines)):
-            if lines[i].startswith('ASSISTENT_ID='):
-                lines[i] = f'ASSISTENT_ID={assistant_id}\n'
-                assistant_id_found = True
-                break
-
-        # Добавление ASSISTENT_ID, если он не найден
-        if not assistant_id_found:
-            lines.append(f'ASSISTENT_ID={assistant_id}\n')
-
-        # Перезапись файла .env с обновленными данными
-        with open('.env', 'w') as file:
-            file.writelines(lines)
+        await db_manager.update_assistant_id(assistant.id)
 
 
 assistant = AssistantSettings()

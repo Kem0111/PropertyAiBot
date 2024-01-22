@@ -5,6 +5,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from bot.services.assistant_manager import AssistantManager
 from bot.services.thread_manager import ThreadManager
+from bot.utils.text import get_text
 from package.settings import BOT_TOKEN
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from openai import AsyncOpenAI
@@ -29,12 +30,14 @@ logging.getLogger().addHandler(file_handler)
 
 
 storage = MemoryStorage()
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(token=BOT_TOKEN, parse_mode='HTML')
 
-dp = Dispatcher(storage=storage)
+dp = Dispatcher(storage=storage,)
 dp.message.middleware(ChatActionMiddleware())
 
 openai_client = AsyncOpenAI(api_key=GPT_TOKEN)
 assistant_manager = AssistantManager(openai_client)
 thread_manager = ThreadManager(openai_client)
 scheduler = AsyncIOScheduler()
+
+texts = get_text("texts.json")

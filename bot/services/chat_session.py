@@ -8,9 +8,14 @@ from .db_manager import db_manager
 class ChatSession:
 
     TOOL_TO_DB_FUNC = {
-        "determine_user_role": db_manager.add_user_role,
-        "collect_user_info": db_manager.update_user_info,
-        "provide_property_ids": db_manager.add_user_request_pr
+        "add_notification": db_manager.add_notification,
+        "collect_user_info_for_order": db_manager.client_proccess,
+        # "provide_property_ids": db_manager.add_user_request_pr
+    }
+
+    TOOL_CALL_OUTPUT = {
+        "add_notification": 'result taken into account',
+        "collect_user_info_for_order": 'result taken into account',
     }
 
     def __init__(self,
@@ -59,21 +64,29 @@ class ChatSession:
                 break
 
             if latest_run.status == "requires_action":
-                tool_call = latest_run.required_action.submit_tool_outputs.tool_calls[0]
+
                 tool_outputs = []
 
-                method = self.TOOL_TO_DB_FUNC.get(tool_call.function.name)
+                for tool_call in latest_run.required_action.submit_tool_outputs.tool_calls:
+                    method = self.TOOL_TO_DB_FUNC.get(tool_call.function.name)
+                    if method:
+                        print(tool_call.function.arguments)
+                        try:
+                            results = await method(
+                                self.user_id, **json.loads(tool_call.function.arguments)
+                            )
+                            output = self.TOOL_CALL_OUTPUT[tool_call.function.name].format(results)
+                        except json.JSONDecodeError as e:
+                            output = f"Ошибка при разборе JSON: {e}, Исходная строка JSON: {tool_call.function.arguments}"
+                        except Exception as e:
+                            output = f"Произошла ошибка: {e}"
+                        tool_outputs.append(
+                                {
+                                    "tool_call_id": tool_call.id,
+                                    "output": output
+                                },
+                            )
 
-                await method(
-                    self.user_id, **json.loads(tool_call.function.arguments)
-                )
-
-                tool_outputs.append(
-                    {
-                          "tool_call_id": tool_call.id,
-                          "output": 'result taken into account'
-                    },
-                )
                 if tool_outputs:
                     await self.thread_manager.submit_tool_outputs(
                         thread_id=self.thread_id,

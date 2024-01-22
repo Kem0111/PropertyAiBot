@@ -25,6 +25,9 @@ class ChatActionMiddleware(BaseMiddleware):
         )
         chat, _ = await Chat.objects.aget_or_create(user=tg_user)
 
+        if not tg_user.is_manager:
+            return
+
         await MessageModel.objects.acreate(
             message_id=event.message_id,
             text=event.text,
@@ -33,12 +36,14 @@ class ChatActionMiddleware(BaseMiddleware):
         )
         bot_message: Message = await handler(event, data)
 
-        await MessageModel.objects.acreate(
-            message_id=bot_message.message_id,
-            text=bot_message.text,
-            chat=chat,
-            sender='bot'
-        )
-        await Chat.objects.filter(id=chat.id).aupdate(
-            count_unread=models.F('count_unread') + 2,
-            last_message_created=timezone.now())
+        if bot_message:
+
+            await MessageModel.objects.acreate(
+                message_id=bot_message.message_id,
+                text=bot_message.text,
+                chat=chat,
+                sender='bot'
+            )
+            await Chat.objects.filter(id=chat.id).aupdate(
+                count_unread=models.F('count_unread') + 2,
+                last_message_created=timezone.now())

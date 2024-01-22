@@ -28,6 +28,7 @@ async def parse_and_update_database(file_content):
         # Извлечение данных из characteristics
         characteristics = realty.find('characteristics')
         price = get_element_text(characteristics, 'price')
+        price_type = get_element_text(characteristics, 'price_type')
         currency = get_element_text(characteristics, 'currency')
         rooms_count = get_element_text(characteristics, 'rooms_count')
         total_area = get_element_text(characteristics, 'total_area')
@@ -54,6 +55,7 @@ async def parse_and_update_database(file_content):
                 'building_number': building_number,
                 'description': description,
                 'price': price,
+                'price_type': price_type,
                 'currency': currency,
                 'rooms_count': rooms_count,
                 'total_area': total_area,
