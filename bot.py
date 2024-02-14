@@ -16,7 +16,7 @@ async def on_startup(bot: Bot):
     from bot.services.property_manager import property_manager
 
     await set_commands(bot)
-    await property_manager.update_properties()
+    # await property_manager.update_properties()
     scheduler.add_job(send_mailing, "cron", minute="*",
                       hour="*", args=(bot,))
     scheduler.start()
